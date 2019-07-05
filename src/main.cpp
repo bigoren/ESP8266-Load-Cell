@@ -14,7 +14,7 @@
 
 #define FILTER_SIZE 15
 
-HX711 scale(PIN_DOUT, PIN_CLK);
+HX711 scale;
 
 AsyncMqttClient mqttClient;
 Ticker mqttReconnectTimer;
@@ -25,7 +25,7 @@ Ticker wifiReconnectTimer;
 
 bool firstRun = true;
 unsigned char samples;
-int sum, average, offset;
+int sum, median, offset;
 char oldResult[10];
 
 void eeWriteInt(int pos, int val) {
@@ -62,6 +62,11 @@ void connectToWifi() {
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 }
 
+void connectToMqtt() {
+  Serial.println("[MQTT] Connecting to MQTT...");
+  mqttClient.connect();
+}
+
 void onWifiConnect(const WiFiEventStationModeGotIP& event) {
   Serial.print("[WiFi] Connected, IP address: ");
   Serial.println(WiFi.localIP());
@@ -73,11 +78,6 @@ void onWifiDisconnect(const WiFiEventStationModeDisconnected& event) {
   Serial.println("[WiFi] Disconnected from Wi-Fi!");
   mqttReconnectTimer.detach(); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
   wifiReconnectTimer.once(WIFI_RECONNECT_TIME, connectToWifi);
-}
-
-void connectToMqtt() {
-  Serial.println("[MQTT] Connecting to MQTT...");
-  mqttClient.connect();
 }
 
 void onMqttConnect(bool sessionPresent) {
@@ -104,8 +104,8 @@ void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
 void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
   if (!strcmp(topic, MQTT_TOPIC_TARE)) {
     Serial.print("Zeroing: ");
-    Serial.println(average / (float) 100);
-    offset = average;
+    Serial.println(median / (float) 100);
+    offset = median;
     if (SAVE_TARE != 0) {
       Serial.print("Saving to EEPROM...");
       eeWriteInt(EEPROM_ADDRESS, offset);
@@ -114,8 +114,9 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
 }
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   EEPROM.begin(512);
+  scale.begin(PIN_DOUT, PIN_CLK);
   Serial.println("Startup!");
 
   wifiConnectHandler = WiFi.onStationModeGotIP(onWifiConnect);
@@ -214,12 +215,12 @@ void loop() {
 
   // sort the array copy
   qsort(sortedSamples, FILTER_SIZE, sizeof(int), compare);
-  int median = sortedSamples[FILTER_SIZE / 2];
+  median = sortedSamples[FILTER_SIZE / 2];
 
   if (firstRun) {
     firstRun = false;
     if (SAVE_TARE == 0) {
-      median = offset;        
+      median = offset;
       return;
     }
   }

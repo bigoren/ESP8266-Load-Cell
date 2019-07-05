@@ -3,39 +3,39 @@
 // ESPAsyncTCP:        https://codeload.github.com/me-no-dev/ESPAsyncTCP/zip/master
 // HX711:              https://codeload.github.com/bogde/HX711/zip/master
 
+#include "secrets.h"
+
 // MQTT Broker Config
-#define MQTT_HOST IPAddress(192, 168, 178, 5)
+#define MQTT_HOST IPAddress(10, 0, 0, 200)
 #define MQTT_PORT 1883
-#define MQTT_USER "homeassistant"
-#define MQTT_PASS "your_passwd"
+#define MQTT_USER ""
+#define MQTT_PASS ""
 #define MQTT_RECONNECT_TIME 2 // in seconds
 
 // MQTT Client Config
-#define MQTT_CLIENT_ID "/room/<room_name>/bed"
+#define MQTT_CLIENT_ID "/sensors/loadcell"
 #define MQTT_TOPIC_LOAD MQTT_CLIENT_ID "/load"
 #define MQTT_TOPIC_LOAD_QoS 0 // Keep 0 if you don't know what it is doing
 #define MQTT_TOPIC_TARE MQTT_CLIENT_ID "/tare"
 #define MQTT_TOPIC_TARE_QoS 0 // Keep 0 if you don't know what it is doing
 
 // WiFi Config
-#define WIFI_SSID "YourWiFi_SSID"
-#define WIFI_PASSWORD "YourWiFi_PW"
-#define WIFI_CLIENT_ID "BED-210"
+#define WIFI_CLIENT_ID "LOADCELL-210"
 #define WIFI_RECONNECT_TIME 2 // in seconds
 
 // Wifi optional static ip (leave client ip empty to disable)
-#define WIFI_STATIC_IP    0 // set to 1 to enable static ip
-#define WIFI_CLIENT_IP    IPAddress(192, 168, 178, 210)
-#define WIFI_GATEWAY_IP   IPAddress(192, 168, 178, 1)
+#define WIFI_STATIC_IP    1 // set to 1 to enable static ip
+#define WIFI_CLIENT_IP    IPAddress(10, 0, 0, 210)
+#define WIFI_GATEWAY_IP   IPAddress(10, 0, 0, 1)
 #define WIFI_SUBNET_IP    IPAddress(255, 255, 255, 0)
-#define WIFI_DNS_IP       IPAddress(192, 168, 178, 4)
+#define WIFI_DNS_IP       IPAddress(10, 0, 0, 1)
 
-#define OTA_PATCH 1 // Set to 0 if you don't want to update your code over-the-air
+#define OTA_PATCH 0 // Set to 0 if you don't want to update your code over-the-air
 #define OTA_PASS "set_ota_password"
 
 // HX711 Config
-#define PIN_DOUT D3
-#define PIN_CLK  D4
+#define PIN_DOUT D2
+#define PIN_CLK  D3
 
 // Get Data:
 #define CALIBRATION   -11000 // ADC bits to Kg conversion factor | modify this value if your reading are way off. Different cable length result in different values.
@@ -43,7 +43,7 @@
 #define NUM_SAMPLES   5      // number of samples - max 255 - published mqtt update every NUM_SAMPLES * SAMPLE_PERIOD = ms
 
 // Send Data:
-#define RESOLUTION    1      // number of characters after the decimal - 0, 1 or 2 is supported.
+#define RESOLUTION    0      // number of characters after the decimal - 0, 1 or 2 is supported.
 
 // Save the Tare to EEPROM.
 // Set 0 to disable. It'll tare once the device has started.
