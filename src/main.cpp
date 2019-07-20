@@ -47,6 +47,13 @@ int eeGetInt(int pos) {
   return val;
 }
 
+void connectToMqtt() {
+  Serial.println("[MQTT] Connecting to MQTT...");
+  mqttClient.setClientId("LOAD_CELLS");
+  mqttClient.setKeepAlive(5);
+  mqttClient.setWill(MQTT_TOPIC_LOAD,MQTT_TOPIC_LOAD_QoS,true,"DEAD",5);
+  mqttClient.connect();
+}
 
 void connectToWifi() {
   Serial.printf("[WiFi] Connecting to %s...\n", WIFI_SSID);
@@ -58,13 +65,19 @@ void connectToWifi() {
   }
 
   delay(100);
-
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-}
-
-void connectToMqtt() {
-  Serial.println("[MQTT] Connecting to MQTT...");
-  mqttClient.connect();
+  delay(5000);
+  if (WiFi.status() != WL_CONNECTED) {
+    WiFi.disconnect(true);
+    WiFi.mode(WIFI_STA);
+    Serial.println("[WiFi] timeout, disconnecting WiFi");
+    ESP.restart();
+  }
+  else {
+    Serial.println(WiFi.localIP());
+    wifiReconnectTimer.detach();
+    connectToMqtt();
+  }
 }
 
 void onWifiConnect(const WiFiEventStationModeGotIP& event) {
