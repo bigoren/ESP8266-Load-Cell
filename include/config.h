@@ -18,6 +18,8 @@
 #define MQTT_TOPIC_LOAD_QoS 0 // Keep 0 if you don't know what it is doing
 #define MQTT_TOPIC_TARE MQTT_CLIENT_ID "/tare"
 #define MQTT_TOPIC_TARE_QoS 0 // Keep 0 if you don't know what it is doing
+#define MQTT_TOPIC_LEDS MQTT_CLIENT_ID "/leds"
+#define MQTT_TOPIC_LEDS_QoS 0 // Keep 0 if you don't know what it is doing
 
 // WiFi Config
 #define WIFI_CLIENT_ID "LOADCELL-210"
@@ -50,3 +52,18 @@
 // Set 1 to save the tare offset to EEPROM - it'll be saved while restarting/power off
 #define SAVE_TARE      1
 #define EEPROM_ADDRESS 0 // You can change this adress after a while to reduce the wear on the EEPROM
+
+// FastLED config
+#if FASTLED_VERSION < 3001000
+#error "Requires FastLED 3.1 or later; check github for latest code."
+#endif
+
+#define DATA_PIN    9
+//#define CLK_PIN   4
+#define LED_TYPE    WS2812
+#define COLOR_ORDER RGB
+#define NUM_LEDS    250
+#define BRIGHTNESS  100
+#define OUTER_RING_NUM 130
+#define INNER_RING_NUM 120
+#define INNER_RING_START OUTER_RING_NUM

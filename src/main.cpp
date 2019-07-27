@@ -2,7 +2,12 @@
 // async-mqtt-client:  https://codeload.github.com/marvinroger/async-mqtt-client/zip/master
 // ESPAsyncTCP:        https://codeload.github.com/me-no-dev/ESPAsyncTCP/zip/master
 // HX711:              https://codeload.github.com/bogde/HX711/zip/master
+#define ARDUINOJSON_USE_LONG_LONG 1
+#define FASTLED_ESP8266_DMA
 
+#include <FastLED.h>
+#include <ArduinoJson.h>
+//#include "Arduino.h" // for millis() function
 #include <ESP8266WiFi.h>
 #include <EEPROM.h>
 #include <Ticker.h>
@@ -13,6 +18,11 @@
 #include "config.h"
 
 #define FILTER_SIZE 15
+
+CRGB leds[NUM_LEDS];
+uint8_t gHue = 0; // rotating "base color" used by many of the patterns
+uint8_t outerLedNumber = 130;
+uint8_t innerLedNumber = 120;
 
 HX711 scale;
 
@@ -103,6 +113,9 @@ void onMqttConnect(bool sessionPresent) {
   uint16_t packetIdSub = mqttClient.subscribe(MQTT_TOPIC_TARE, MQTT_TOPIC_TARE_QoS);
   Serial.print("Subscribing to ");
   Serial.println(MQTT_TOPIC_TARE);
+  uint16_t packetIdSub2 = mqttClient.subscribe(MQTT_TOPIC_LEDS, MQTT_TOPIC_LEDS_QoS);
+  Serial.print("Subscribing to ");
+  Serial.println(MQTT_TOPIC_LEDS);
 }
 
 void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
@@ -124,6 +137,29 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
       eeWriteInt(EEPROM_ADDRESS, offset);
     }
   }
+  if (!strcmp(topic,MQTT_TOPIC_LEDS)) {
+    Serial.print("Leds message: ");
+    Serial.print(len);
+    Serial.print(" [");
+    Serial.print(topic);
+    Serial.print("] ");
+    for (int i = 0; i < len; i++) {
+      Serial.print((char)payload[i]);
+    }
+    Serial.println();
+
+    DynamicJsonDocument doc(1024);
+    deserializeJson(doc, payload);
+    float ledPercent = doc["led_percent"];
+    outerLedNumber = ledPercent * OUTER_RING_NUM;
+    innerLedNumber = ledPercent * INNER_RING_NUM;
+    gHue = doc["led_color"];
+    Serial.print("led_percent: ");
+    Serial.println(ledPercent);
+    Serial.print("led color: ");
+    Serial.println(gHue);
+    FastLED.clear();
+  }
 }
 
 void setup() {
@@ -131,6 +167,16 @@ void setup() {
   EEPROM.begin(512);
   scale.begin(PIN_DOUT, PIN_CLK);
   Serial.println("Startup!");
+
+  // tell FastLED about the LED strip configuration
+  FastLED.addLeds<LED_TYPE,DATA_PIN,COLOR_ORDER>(leds, NUM_LEDS)
+         .setCorrection(TypicalLEDStrip)
+         .setDither(BRIGHTNESS < 255);
+  // set master brightness control
+  FastLED.setBrightness(BRIGHTNESS);
+
+  // pin 2 for on board led is same as D2 for scale?
+  pinMode(2, OUTPUT);
 
   wifiConnectHandler = WiFi.onStationModeGotIP(onWifiConnect);
   wifiDisconnectHandler = WiFi.onStationModeDisconnected(onWifiDisconnect);
@@ -194,6 +240,8 @@ void setup() {
   }
 
   connectToWifi();
+  // Turn on board led after wifi connect
+  digitalWrite(2,HIGH);
 }
 
 int compare(const void* a, const void* b)
@@ -211,43 +259,60 @@ void loop() {
     ArduinoOTA.handle();
   }
 
-  // static filter variables
-  static int filterSamples[FILTER_SIZE];
-  static int filterHead = 0;
+  long prevTime, currTime;
+  prevTime = currTime;
+  currTime = millis();
+  if ((currTime - prevTime) > SAMPLE_PERIOD) {
+    // static filter variables
+    static int filterSamples[FILTER_SIZE];
+    static int filterHead = 0;
 
-  // take sample and increment head
-  filterSamples[filterHead] = scale.get_units() * 100;
-  filterHead = (filterHead + 1) % FILTER_SIZE;
+    // take sample and increment head
+    filterSamples[filterHead] = scale.get_units() * 100;
+    filterHead = (filterHead + 1) % FILTER_SIZE;
 
-  // copy filter array
-  int sortedSamples[FILTER_SIZE];
-  for (int i = 0; i < FILTER_SIZE; i++)
-  {
-    sortedSamples[i] = filterSamples[i];
-  }
-
-  // sort the array copy
-  qsort(sortedSamples, FILTER_SIZE, sizeof(int), compare);
-  median = sortedSamples[FILTER_SIZE / 2];
-
-  if (firstRun) {
-    firstRun = false;
-    if (SAVE_TARE == 0) {
-      median = offset;
-      return;
+    // copy filter array
+    int sortedSamples[FILTER_SIZE];
+    for (int i = 0; i < FILTER_SIZE; i++)
+    {
+      sortedSamples[i] = filterSamples[i];
     }
+
+    // sort the array copy
+    qsort(sortedSamples, FILTER_SIZE, sizeof(int), compare);
+    median = sortedSamples[FILTER_SIZE / 2];
+
+    if (firstRun) {
+      firstRun = false;
+      if (SAVE_TARE == 0) {
+        median = offset;
+        return;
+      }
+    }
+
+    char result[10];
+    dtostrf(((median-offset) / (float) 100), 5, RESOLUTION, result);
+
+    if (mqttClient.connected() && strcmp(result, oldResult)) {
+      mqttClient.publish(MQTT_TOPIC_LOAD, MQTT_TOPIC_LOAD_QoS, true, result);
+      Serial.print("Pushing new result:");
+      Serial.println(result);
+    }
+
+    strncpy(oldResult, result, 10);
   }
 
-  char result[10];
-  dtostrf(((median-offset) / (float) 100), 5, RESOLUTION, result);
-
-  if (mqttClient.connected() && strcmp(result, oldResult)) {
-    mqttClient.publish(MQTT_TOPIC_LOAD, MQTT_TOPIC_LOAD_QoS, true, result);
-    Serial.print("Pushing new result:");
-    Serial.println(result);
+  // fill_rainbow( leds, NUM_LEDS, gHue, 255 / NUM_LEDS);
+  //fill_solid(leds, NUM_LEDS, CHSV(gHue, 255, 255));
+  for (int i = 0; i < outerLedNumber; i++)
+  {
+    leds[i] = CHSV(gHue, 255, 255);
   }
-
-  strncpy(oldResult, result, 10);
-
-  delay(SAMPLE_PERIOD);
+  for (int i = 0; i < innerLedNumber; i++)
+  {
+    leds[i+INNER_RING_START] = CHSV(gHue, 255, 255);
+  }
+  FastLED.show();
+  // gHue++;
+  // delay(SAMPLE_PERIOD);
 }
