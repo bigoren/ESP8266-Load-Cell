@@ -165,17 +165,11 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
 
 void setup() {
   Serial.begin(115200);
-  Serial.println("started!");
-
+  Serial.println("Serial started");
   EEPROM.begin(512);
+  Serial.println("EEPROM started");
+  // NOTE: scale begins are blocking! if no HX711 is connected ESP will freeze
   scale.begin(HX711_PIN_DOUT, HX711_PIN_CLK);
- 	// pinMode(HX711_PIN_DOUT2, OUTPUT);
-	// pinMode(HX711_PIN_CLK2, INPUT);
-  // digitalWrite(HX711_PIN_CLK2, LOW);
-  // while(digitalRead(HX711_PIN_DOUT2) == LOW) {
-  //   Serial.println("wait");
-  // }
-
   scale2.begin(HX711_PIN_DOUT2, HX711_PIN_CLK2);
   Serial.println("HX711 begin ended!");
 
