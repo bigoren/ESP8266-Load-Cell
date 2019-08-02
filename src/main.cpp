@@ -25,6 +25,7 @@ uint8_t outerLedNumber = 130;
 uint8_t innerLedNumber = 120;
 
 HX711 scale;
+// HX711 scale2;
 
 AsyncMqttClient mqttClient;
 Ticker mqttReconnectTimer;
@@ -165,7 +166,8 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
 void setup() {
   Serial.begin(115200);
   EEPROM.begin(512);
-  scale.begin(PIN_DOUT, PIN_CLK);
+  scale.begin(HX711_PIN_DOUT, HX711_PIN_CLK);
+  // scale2.begin(HX711_PIN_DOUT2, HX711_PIN_CLK2);
   Serial.println("Startup!");
 
   // tell FastLED about the LED strip configuration
@@ -175,7 +177,7 @@ void setup() {
   // set master brightness control
   FastLED.setBrightness(BRIGHTNESS);
 
-  // pin 2 for on board led is same as D2 for scale?
+  // pin 2 = D4 for ESP12 on board led
   pinMode(2, OUTPUT);
 
   wifiConnectHandler = WiFi.onStationModeGotIP(onWifiConnect);
@@ -198,6 +200,7 @@ void setup() {
   }
 
   scale.set_scale(CALIBRATION);
+  // scale2.set_scale(CALIBRATION);
 
   if (OTA_PATCH == 1) {
     ArduinoOTA.onStart([]() {
@@ -241,7 +244,7 @@ void setup() {
 
   connectToWifi();
   // Turn on board led after wifi connect
-  digitalWrite(2,HIGH);
+  digitalWrite(2,LOW);
 }
 
 int compare(const void* a, const void* b)
@@ -268,7 +271,7 @@ void loop() {
     static int filterHead = 0;
 
     // take sample and increment head
-    filterSamples[filterHead] = scale.get_units() * 100;
+    filterSamples[filterHead] = (scale.get_units() * 100); // + (scale2.get_units() * 100);
     filterHead = (filterHead + 1) % FILTER_SIZE;
 
     // copy filter array

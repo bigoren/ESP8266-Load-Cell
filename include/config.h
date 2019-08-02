@@ -35,9 +35,12 @@
 #define OTA_PATCH 0 // Set to 0 if you don't want to update your code over-the-air
 #define OTA_PASS "set_ota_password"
 
-// HX711 Config
-#define PIN_DOUT D2
-#define PIN_CLK  D3
+// HX711 Config scale 1 pins
+#define HX711_PIN_DOUT D2
+#define HX711_PIN_CLK  D3
+// HX711 Config scale 2 pins
+#define HX711_PIN_DOUT2 D5
+#define HX711_PIN_CLK2  D6
 
 // Get Data:
 #define CALIBRATION   -11000 // ADC bits to Kg conversion factor | modify this value if your reading are way off. Different cable length result in different values.
