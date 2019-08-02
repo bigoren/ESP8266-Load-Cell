@@ -62,7 +62,7 @@ void connectToMqtt() {
   Serial.println("[MQTT] Connecting to MQTT...");
   mqttClient.setClientId("LOAD_CELLS");
   mqttClient.setKeepAlive(5);
-  mqttClient.setWill(MQTT_TOPIC_LOAD,MQTT_TOPIC_LOAD_QoS,true,"DEAD",5);
+  mqttClient.setWill(MQTT_TOPIC_LOAD,MQTT_TOPIC_LOAD_QoS,true,"{}",2);
   mqttClient.connect();
 }
 
@@ -300,9 +300,13 @@ void loop() {
     dtostrf(((median-offset) / (float) 100), 5, RESOLUTION, result);
 
     if (mqttClient.connected() && strcmp(result, oldResult)) {
-      mqttClient.publish(MQTT_TOPIC_LOAD, MQTT_TOPIC_LOAD_QoS, true, result);
-      Serial.print("Pushing new result:");
-      Serial.println(result);
+      StaticJsonDocument<128> json_doc;
+      json_doc["weight"] = result;
+      char json_result[40];
+      serializeJson(json_doc, json_result);
+      mqttClient.publish(MQTT_TOPIC_LOAD, MQTT_TOPIC_LOAD_QoS, true, json_result);
+      serializeJson(json_doc, Serial);
+      Serial.println();
     }
 
     strncpy(oldResult, result, 10);
