@@ -25,7 +25,7 @@ uint8_t outerLedNumber = 130;
 uint8_t innerLedNumber = 120;
 
 HX711 scale;
-// HX711 scale2;
+HX711 scale2;
 
 AsyncMqttClient mqttClient;
 Ticker mqttReconnectTimer;
@@ -165,10 +165,19 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
 
 void setup() {
   Serial.begin(115200);
+  Serial.println("started!");
+
   EEPROM.begin(512);
   scale.begin(HX711_PIN_DOUT, HX711_PIN_CLK);
-  // scale2.begin(HX711_PIN_DOUT2, HX711_PIN_CLK2);
-  Serial.println("Startup!");
+ 	// pinMode(HX711_PIN_DOUT2, OUTPUT);
+	// pinMode(HX711_PIN_CLK2, INPUT);
+  // digitalWrite(HX711_PIN_CLK2, LOW);
+  // while(digitalRead(HX711_PIN_DOUT2) == LOW) {
+  //   Serial.println("wait");
+  // }
+
+  scale2.begin(HX711_PIN_DOUT2, HX711_PIN_CLK2);
+  Serial.println("HX711 begin ended!");
 
   // tell FastLED about the LED strip configuration
   FastLED.addLeds<LED_TYPE,DATA_PIN,COLOR_ORDER>(leds, NUM_LEDS)
@@ -200,7 +209,7 @@ void setup() {
   }
 
   scale.set_scale(CALIBRATION);
-  // scale2.set_scale(CALIBRATION);
+  scale2.set_scale(CALIBRATION);
 
   if (OTA_PATCH == 1) {
     ArduinoOTA.onStart([]() {
@@ -271,7 +280,7 @@ void loop() {
     static int filterHead = 0;
 
     // take sample and increment head
-    filterSamples[filterHead] = (scale.get_units() * 100); // + (scale2.get_units() * 100);
+    filterSamples[filterHead] = (scale2.get_units() * 100) - (scale.get_units() * 100);
     filterHead = (filterHead + 1) % FILTER_SIZE;
 
     // copy filter array
