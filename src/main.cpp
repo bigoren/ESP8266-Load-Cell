@@ -247,7 +247,7 @@ void setup() {
 
   connectToWifi();
   // Turn on board led after wifi connect
-  digitalWrite(2,LOW);
+  // digitalWrite(2,LOW);
 }
 
 int compare(const void* a, const void* b)
