@@ -21,8 +21,8 @@
 
 CRGB leds[NUM_LEDS];
 uint8_t gHue = 0; // rotating "base color" used by many of the patterns
-uint8_t outerLedNumber = 130;
-uint8_t innerLedNumber = 120;
+uint8_t outerLedNumber = 0;
+uint8_t innerLedNumber = 0;
 
 HX711 scale;
 HX711 scale2;
@@ -77,7 +77,7 @@ void connectToWifi() {
 
   delay(100);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  delay(5000);
+  delay(10000);
   if (WiFi.status() != WL_CONNECTED) {
     WiFi.disconnect(true);
     WiFi.mode(WIFI_STA);
@@ -181,7 +181,8 @@ void setup() {
   FastLED.setBrightness(BRIGHTNESS);
 
   // pin 2 = D4 for ESP12 on board led
-  pinMode(2, OUTPUT);
+  #define LED_GPIO D0
+  pinMode(LED_GPIO, OUTPUT);
 
   wifiConnectHandler = WiFi.onStationModeGotIP(onWifiConnect);
   wifiDisconnectHandler = WiFi.onStationModeDisconnected(onWifiDisconnect);
@@ -246,8 +247,8 @@ void setup() {
   }
 
   connectToWifi();
-  // Turn on board led after wifi connect
-  // digitalWrite(2,LOW);
+  // Turn OFF board led after wifi connect
+  digitalWrite(LED_GPIO,LOW);
 }
 
 int compare(const void* a, const void* b)

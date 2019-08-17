@@ -6,7 +6,9 @@
 #include "secrets.h"
 
 // MQTT Broker Config
-#define MQTT_HOST IPAddress(10, 0, 0, 200)
+// #define MQTT_HOST IPAddress(10, 0, 0, 200)
+// TEMP IP CHANGE, revert later!!
+#define MQTT_HOST IPAddress(192, 168, 14, 22)
 #define MQTT_PORT 1883
 #define MQTT_USER ""
 #define MQTT_PASS ""
@@ -26,7 +28,7 @@
 #define WIFI_RECONNECT_TIME 2 // in seconds
 
 // Wifi optional static ip (leave client ip empty to disable)
-#define WIFI_STATIC_IP    1 // set to 1 to enable static ip
+#define WIFI_STATIC_IP    0 // set to 1 to enable static ip
 #define WIFI_CLIENT_IP    IPAddress(10, 0, 0, 210)
 #define WIFI_GATEWAY_IP   IPAddress(10, 0, 0, 1)
 #define WIFI_SUBNET_IP    IPAddress(255, 255, 255, 0)
