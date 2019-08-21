@@ -17,12 +17,20 @@
 #include <stdlib.h>
 #include "config.h"
 
-#define FILTER_SIZE 15
+#define FILTER_SIZE 7
+
+enum AnimationMode {
+  AnimationModeConfetti = 0,
+  AnimationModeFill = 1,
+  AnimationModeMovingSegments = 2,
+  AnimationModeRainbow = 3
+};
+
+AnimationMode animationMode = AnimationModeRainbow;
 
 CRGB leds[NUM_LEDS];
 uint8_t gHue = 0; // rotating "base color" used by many of the patterns
-uint8_t outerLedNumber = 0;
-uint8_t innerLedNumber = 0;
+float fillPercent = 0.0;
 
 HX711 scale;
 HX711 scale2;
@@ -101,7 +109,7 @@ void onWifiConnect(const WiFiEventStationModeGotIP& event) {
 void onWifiDisconnect(const WiFiEventStationModeDisconnected& event) {
   Serial.println("[WiFi] Disconnected from Wi-Fi!");
   mqttReconnectTimer.detach(); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
-  wifiReconnectTimer.once(WIFI_RECONNECT_TIME, connectToWifi);
+  //wifiReconnectTimer.once(WIFI_RECONNECT_TIME, connectToWifi);
 }
 
 void onMqttConnect(bool sessionPresent) {
@@ -151,12 +159,10 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
 
     DynamicJsonDocument doc(1024);
     deserializeJson(doc, payload);
-    float ledPercent = doc["led_percent"];
-    outerLedNumber = ledPercent * OUTER_RING_NUM;
-    innerLedNumber = ledPercent * INNER_RING_NUM;
+    fillPercent = doc["led_percent"];
     gHue = doc["led_color"];
     Serial.print("led_percent: ");
-    Serial.println(ledPercent);
+    Serial.println(fillPercent);
     Serial.print("led color: ");
     Serial.println(gHue);
     FastLED.clear();
@@ -180,9 +186,7 @@ void setup() {
   // set master brightness control
   FastLED.setBrightness(BRIGHTNESS);
 
-  // pin 2 = D4 for ESP12 on board led
-  #define LED_GPIO D0
-  pinMode(LED_GPIO, OUTPUT);
+  pinMode(D0, OUTPUT);
 
   wifiConnectHandler = WiFi.onStationModeGotIP(onWifiConnect);
   wifiDisconnectHandler = WiFi.onStationModeDisconnected(onWifiDisconnect);
@@ -248,7 +252,7 @@ void setup() {
 
   connectToWifi();
   // Turn OFF board led after wifi connect
-  digitalWrite(LED_GPIO,LOW);
+  digitalWrite(D0, LOW);
 }
 
 int compare(const void* a, const void* b)
@@ -313,16 +317,93 @@ void loop() {
     strncpy(oldResult, result, 10);
   }
 
+  switch(animationMode) {
+
+    case AnimationModeConfetti:
+    {
+      fadeToBlackBy( leds, NUM_LEDS, 13);
+      for(int i=0; i<5; i++) {
+        int pos = random16(NUM_LEDS);
+        leds[pos] += CHSV( beat8(5), 200, 255);
+      }
+    }
+    break;
+
+    case AnimationModeFill:
+    {
+      FastLED.clear();
+      int endIndexOuter = (int)(fillPercent * OUTER_RING_NUM);
+      for (int i = 0; i < endIndexOuter; i++)
+      {
+        leds[i] = CHSV(gHue, 255, 255);
+      }
+
+      int endIndexInner = (int)(fillPercent * INNER_RING_NUM);
+      for (int i = 0; i < endIndexInner; i++)
+      {
+        leds[i + INNER_RING_START] = CHSV(gHue, 255, 255);
+      }
+    }
+    break;
+
+    case AnimationModeMovingSegments: 
+    {
+      float timeOffset = beat8(20) / 255.0;
+      uint8_t brightness = beatsin8(30);
+
+      FastLED.clear();
+      for(int i=0; i<5; i++) {
+        float relStart = i * 0.2 + timeOffset;
+        float relEnd = relStart + 0.08;
+
+        uint8_t hue = gHue;
+
+        int startIndexOuter = (int)(relStart * OUTER_RING_NUM);
+        int endIndexOuter = (int)(relEnd * OUTER_RING_NUM);
+        for (int j = startIndexOuter; j < endIndexOuter; j++)
+        {
+          int ledIndex = j % OUTER_RING_NUM;
+          leds[ledIndex] = CHSV(hue, 255, brightness);
+        }
+
+        int startIndexInner = (int)(relStart * INNER_RING_NUM);
+        int endIndexInner = (int)(relEnd * INNER_RING_NUM);
+        for (int j = startIndexInner; j < endIndexInner; j++)
+        {
+          int ledIndex = j % INNER_RING_NUM + INNER_RING_START;
+          leds[ledIndex] = CHSV(hue, 255, brightness);
+        }
+        
+      }
+    }
+    break;
+
+    case AnimationModeRainbow: 
+    {
+        uint8_t hueShift = beat8(30);
+        for (int i = 0; i < OUTER_RING_NUM; i++)
+        {
+          float rel = (float)i / (float)OUTER_RING_NUM;
+          leds[i] = CHSV(hueShift + (uint8_t)(rel * 255), 255, 255);
+        }      
+
+        for (int i = 0; i < INNER_RING_NUM; i++)
+        {
+          float rel = (float)i / (float)INNER_RING_NUM;
+          leds[i + INNER_RING_START] = CHSV(hueShift + (uint8_t)(rel * 255), 255, 255);
+        }      
+    }
+    break;
+
+  }
+
+
+
   // fill_rainbow( leds, NUM_LEDS, gHue, 255 / NUM_LEDS);
   //fill_solid(leds, NUM_LEDS, CHSV(gHue, 255, 255));
-  for (int i = 0; i < outerLedNumber; i++)
-  {
-    leds[i] = CHSV(gHue, 255, 255);
-  }
-  for (int i = 0; i < innerLedNumber; i++)
-  {
-    leds[i+INNER_RING_START] = CHSV(gHue, 255, 255);
-  }
+  fillPercent = 0.9;
+  float relStart = beat8(15) / 255.0;
+
   FastLED.show();
   // gHue++;
   // delay(SAMPLE_PERIOD);
