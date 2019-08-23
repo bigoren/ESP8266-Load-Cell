@@ -20,17 +20,18 @@
 #define FILTER_SIZE 7
 
 enum AnimationMode {
-  AnimationModeConfetti = 0,
-  AnimationModeFill = 1,
-  AnimationModeMovingSegments = 2,
-  AnimationModeRainbow = 3
+  AnimationModeClear = 0,
+  AnimationModeConfetti = 1,
+  AnimationModeFill = 2,
+  AnimationModeMovingSegments = 3,
+  AnimationModeRainbow = 4,
 };
 
-AnimationMode animationMode = AnimationModeRainbow;
 
 CRGB leds[NUM_LEDS];
 uint8_t gHue = 0; // rotating "base color" used by many of the patterns
 float fillPercent = 0.0;
+AnimationMode animationMode = AnimationModeClear;
 
 HX711 scale;
 HX711 scale2;
@@ -161,6 +162,7 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
     deserializeJson(doc, payload);
     fillPercent = doc["led_percent"];
     gHue = doc["led_color"];
+    animationMode = (AnimationMode)doc["animation_mode"].as<int>();
     Serial.print("led_percent: ");
     Serial.println(fillPercent);
     Serial.print("led color: ");
@@ -395,14 +397,10 @@ void loop() {
     }
     break;
 
+    default:
+      FastLED.clear();
+
   }
-
-
-
-  // fill_rainbow( leds, NUM_LEDS, gHue, 255 / NUM_LEDS);
-  //fill_solid(leds, NUM_LEDS, CHSV(gHue, 255, 255));
-  fillPercent = 0.9;
-  float relStart = beat8(15) / 255.0;
 
   FastLED.show();
   // gHue++;
