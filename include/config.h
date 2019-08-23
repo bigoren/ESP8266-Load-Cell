@@ -66,7 +66,7 @@
 #define DATA_PIN    9
 //#define CLK_PIN   4
 #define LED_TYPE    WS2812
-#define COLOR_ORDER RGB
+#define COLOR_ORDER GRB
 #define NUM_LEDS    250
 #define BRIGHTNESS  100
 #define OUTER_RING_NUM 130
