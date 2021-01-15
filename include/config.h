@@ -13,7 +13,7 @@
 #define MQTT_RECONNECT_TIME 2 // in seconds
 
 // MQTT Client Config
-#define MQTT_CLIENT_ID "/sensors/loadcell"
+#define MQTT_CLIENT_ID "sensors/bama"
 #define MQTT_TOPIC_LOAD MQTT_CLIENT_ID "/load"
 #define MQTT_TOPIC_LOAD_QoS 0 // Keep 0 if you don't know what it is doing
 #define MQTT_TOPIC_TARE MQTT_CLIENT_ID "/tare"
@@ -22,7 +22,7 @@
 #define MQTT_TOPIC_LEDS_QoS 0 // Keep 0 if you don't know what it is doing
 
 // WiFi Config
-#define WIFI_CLIENT_ID "LOADCELL"
+#define WIFI_CLIENT_ID "BAMA"
 #define WIFI_RECONNECT_TIME 2 // in seconds
 
 // Wifi optional static ip (leave client ip empty to disable)
@@ -32,7 +32,7 @@
 #define WIFI_SUBNET_IP    IPAddress(255, 255, 255, 0)
 #define WIFI_DNS_IP       IPAddress(10, 0, 0, 1)
 
-#define OTA_PATCH 0 // Set to 0 if you don't want to update your code over-the-air
+#define OTA_PATCH 1 // Set to 0 if you don't want to update your code over-the-air
 #define OTA_PASS "set_ota_password"
 
 // HX711 Config scale 1 pins
@@ -44,7 +44,7 @@
 
 // Get Data:
 #define CALIBRATION   -11000 // ADC bits to Kg conversion factor | modify this value if your reading are way off. Different cable length result in different values.
-#define SAMPLE_PERIOD 100    // sample period in ms
+#define SAMPLE_PERIOD 5     // sample period in ms
 #define NUM_SAMPLES   5      // number of samples - max 255 - published mqtt update every NUM_SAMPLES * SAMPLE_PERIOD = ms
 
 // Send Data:

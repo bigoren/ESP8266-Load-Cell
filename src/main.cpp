@@ -17,7 +17,7 @@
 #include <stdlib.h>
 #include "config.h"
 
-#define FILTER_SIZE 7
+#define FILTER_SIZE 1
 
 enum AnimationMode {
   AnimationModeClear = 0,
@@ -46,6 +46,7 @@ Ticker wifiReconnectTimer;
 bool firstRun = true;
 unsigned char samples;
 int sum, median, offset;
+float weight;
 char oldResult[10];
 
 void eeWriteInt(int pos, int val) {
@@ -245,9 +246,8 @@ void setup() {
       }
     });
 
-    ArduinoOTA.setHostname(WIFI_CLIENT_ID);
-    ArduinoOTA.setPassword(OTA_PASS);
-
+ArduinoOTA.setHostname(WIFI_CLIENT_ID);
+  //ArduinoOTA.setPassword(OTA_PASS);
 
     ArduinoOTA.begin();
   }
@@ -267,12 +267,14 @@ int compare(const void* a, const void* b)
      else return 1;
 }
 
+long prevTime, currTime=0;
+long prevStamp, stamp=0;
+
 void loop() {
   if (WiFi.isConnected() && (OTA_PATCH != 0)) {
     ArduinoOTA.handle();
   }
 
-  long prevTime, currTime;
   prevTime = currTime;
   currTime = millis();
   if ((currTime - prevTime) > SAMPLE_PERIOD) {
@@ -281,7 +283,7 @@ void loop() {
     static int filterHead = 0;
 
     // take sample and increment head
-    filterSamples[filterHead] = (scale2.get_units() * 100) - (scale.get_units() * 100);
+    filterSamples[filterHead] = ((scale2.get_units() * 100) - (scale.get_units() * 100)) / 2;
     filterHead = (filterHead + 1) % FILTER_SIZE;
 
     // copy filter array
@@ -303,12 +305,15 @@ void loop() {
       }
     }
 
+    weight = ((median-offset) / (float) 100);
     char result[10];
     dtostrf(((median-offset) / (float) 100), 5, RESOLUTION, result);
-
     if (mqttClient.connected() && strcmp(result, oldResult)) {
+      prevStamp = stamp;
+      stamp = millis();
       StaticJsonDocument<128> json_doc;
       json_doc["weight"] = result;
+      json_doc["timeDiff"] = (stamp - prevStamp); 
       char json_result[40];
       serializeJson(json_doc, json_result);
       mqttClient.publish(MQTT_TOPIC_LOAD, MQTT_TOPIC_LOAD_QoS, true, json_result);
@@ -317,6 +322,16 @@ void loop() {
     }
 
     strncpy(oldResult, result, 10);
+    // if (weight < 2.0) {
+    //   animationMode = AnimationModeMovingSegments;
+    // }
+    // if ((weight > 2.0) & (weight <= 70.0)) {
+    //   fillPercent = 200 / weight;
+    //   animationMode = AnimationModeFill;
+    // }
+    // if (weight > 70.0) {
+    //   animationMode = AnimationModeRainbow;
+    // }
   }
 
   switch(animationMode) {
